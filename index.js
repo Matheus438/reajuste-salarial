@@ -1,73 +1,86 @@
-const express = require('express');
-const app = express();
+import express from 'express';
+const host = '0.0.0.0';
+const porta = 3000;
 
-// Rota principal
-app.get('/', (req, res) => {
-  const { idade, sexo, salario_base, anoContratacao, matricula } = req.query;
+const server = express();
 
-  if (!idade || !sexo || !salario_base || !anoContratacao || !matricula) {
-    return res.send(`
-      <h2> Cálculo de Reajuste Salarial</h2>
-      <p>Informe os dados na URL conforme o exemplo:</p>
-      <code>?idade=35&sexo=F&salario_base=2000&anoContratacao=2015&matricula=12345</code>
+// Página inicial simples
+server.get('/', (req, res) => {
+    res.send(`
+        <body style="font-family: Arial; text-align: center;">
+            <h1>Sistema de Reajuste Salarial</h1>
+            <p>Use a rota <b>/calcular</b> com os parâmetros abaixo:</p>
+            <code>?matricula=123&nome=Matheus&idade=25&salario=2500&anoContratacao=2020</code>
+        </body>
     `);
-  }
-
-  const idadeNum = parseInt(idade);
-  const salario = parseFloat(salario_base);
-  const ano = parseInt(anoContratacao);
-  const mat = parseInt(matricula);
-  const anoAtual = new Date().getFullYear();
-  const anosEmpresa = anoAtual - ano;
-
-  if (idadeNum <= 16 || salario <= 0 || ano <= 1960 || mat <= 0) {
-    return res.send(`
-      <h2> Dados inválidos!</h2>
-      <ul>
-        <li>Idade deve ser maior que 16.</li>
-        <li>Salário deve ser positivo.</li>
-        <li>Ano de contratação deve ser maior que 1960.</li>
-        <li>Matrícula deve ser maior que zero.</li>
-      </ul>
-    `);
-  }
-
-  let reajuste = 0;
-  let desconto = 0;
-  let acrescimo = 0;
-
-  if (idadeNum >= 18 && idadeNum <= 39) {
-    reajuste = sexo === 'M' ? 0.10 : 0.08;
-    desconto = sexo === 'M' ? 10 : 11;
-    acrescimo = sexo === 'M' ? 17 : 16;
-  } else if (idadeNum >= 40 && idadeNum <= 69) {
-    reajuste = sexo === 'M' ? 0.12 : 0.13;
-    desconto = sexo === 'M' ? 5 : 4;
-    acrescimo = sexo === 'M' ? 15 : 14;
-  } else if (idadeNum >= 70 && idadeNum <= 99) {
-    reajuste = sexo === 'M' ? 0.15 : 0.17;
-    desconto = sexo === 'M' ? 15 : 17;
-    acrescimo = sexo === 'M' ? 13 : 12;
-  } else {
-    return res.send("<h3>Idade fora das faixas válidas (18 a 99).</h3>");
-  }
-
-  let novoSalario = salario + (salario * reajuste);
-  novoSalario += anosEmpresa > 10 ? acrescimo : -desconto;
-
-  res.send(`
-    <h2> Resultado do Cálculo</h2>
-    <p><b>Matrícula:</b> ${mat}</p>
-    <p><b>Sexo:</b> ${sexo}</p>
-    <p><b>Idade:</b> ${idadeNum}</p>
-    <p><b>Anos de Empresa:</b> ${anosEmpresa}</p>
-    <p><b>Salário Base:</b> R$ ${salario.toFixed(2)}</p>
-    <hr>
-    <p><b>Reajuste:</b> ${(reajuste * 100).toFixed(0)}%</p>
-    <p><b>${anosEmpresa > 10 ? 'Acréscimo' : 'Desconto'}:</b> R$ ${anosEmpresa > 10 ? acrescimo : desconto}</p>
-    <h3> Novo Salário: R$ ${novoSalario.toFixed(2)}</h3>
-  `);
 });
 
-// Exporta o app para o Vercel usar
-module.exports = app;
+// Rota principal da atividade
+server.get('/calcular', (req, res) => {
+    const { matricula, nome, idade, salario, anoContratacao } = req.query;
+
+    // Verificação de preenchimento
+    if (!matricula || !nome || !idade || !salario || !anoContratacao) {
+        return res.send(`
+            <body style="font-family: Arial; text-align:center; color:red;">
+                <h1>Erro</h1>
+                <p>Todos os parâmetros devem ser informados:</p>
+                <code>?matricula=123&nome=Matheus&idade=25&salario=2500&anoContratacao=2020</code>
+            </body>
+        `);
+    }
+
+    // Conversão numérica
+    const idadeNum = parseInt(idade);
+    const salarioNum = parseFloat(salario);
+    const anoNum = parseInt(anoContratacao);
+    const anoAtual = new Date().getFullYear();
+
+    // Validações lógicas
+    if (isNaN(idadeNum) || isNaN(salarioNum) || isNaN(anoNum) || idadeNum <= 0 || salarioNum <= 0 || anoNum > anoAtual) {
+        return res.send(`
+            <body style="font-family: Arial; text-align:center; color:red;">
+                <h1>Dados inválidos</h1>
+                <p>Verifique se idade, salário e ano de contratação estão corretos.</p>
+            </body>
+        `);
+    }
+
+    // Cálculo do reajuste
+    let reajuste = 0;
+    const tempoEmpresa = anoAtual - anoNum;
+
+    if (tempoEmpresa >= 10) {
+        reajuste = 0.20;
+    } else if (tempoEmpresa >= 5) {
+        reajuste = 0.10; 
+    } else {
+        reajuste = 0.05; 
+    }
+
+    const novoSalario = salarioNum + (salarioNum * reajuste);
+
+    // Envio da resposta em HTML
+    res.send(`
+        <body style="font-family: Arial; margin: 40px;">
+            <h1>Resultado do Cálculo</h1>
+            <table border="1" cellpadding="10" cellspacing="0" style="margin:auto; border-collapse: collapse;">
+                <tr><th>Matrícula</th><td>${matricula}</td></tr>
+                <tr><th>Nome</th><td>${nome}</td></tr>
+                <tr><th>Idade</th><td>${idadeNum} anos</td></tr>
+                <tr><th>Ano de Contratação</th><td>${anoNum}</td></tr>
+                <tr><th>Tempo de Empresa</th><td>${tempoEmpresa} anos</td></tr>
+                <tr><th>Salário Atual</th><td>R$ ${salarioNum.toFixed(2)}</td></tr>
+                <tr><th>Reajuste</th><td>${(reajuste * 100).toFixed(0)}%</td></tr>
+                <tr><th><b>Novo Salário</b></th><td><b>R$ ${novoSalario.toFixed(2)}</b></td></tr>
+            </table>
+            <p style="text-align:center; margin-top:20px;">
+                <a href="/">Voltar à Página Inicial</a>
+            </p>
+        </body>
+    `);
+});
+
+server.listen(porta, host, () => {
+    console.log(`Servidor escutando em http://${host}:${porta}`);
+});
